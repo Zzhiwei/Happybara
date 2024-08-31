@@ -4,34 +4,20 @@ class TelegramBotService
 
     Telegram::Bot::Client.run(token) do |bot|
       @bot = bot
-
       bot.listen do |message|
-        user = User.find_or_create_by(id: message.from.id)
+        user = User.find_by_id(message.from.id)
 
-        # if user is registering
-
-
-        # if user has not usered and entered "/register"
-
-        # if user has not reigstered and did not enter /register
-
-
-
-        if message == '/register'
-          user.update(registration_state: 'awaiting_email')
-          bot.api.send_message(chat_id: message.chat.id, text: "Please enter your email")
+        if !user
+          if message.text == '/register'
+            User.create(id: message.from.id, registration_state: 'awaiting_email')
+            bot.api.send_message(chat_id: message.chat.id, text: "Please enter your email")
+          else
+            bot.api.send_message(
+              chat_id: message.chat.id, text: "Unregistered. Please use /register to sign up."
+            )
+          end
           next
         end
-
-        # if user is nil registration_state is nil too
-        unless user
-          bot.api.send_message(
-            chat_id: message.chat.id, text: "Unregistered. Please use /register to sign up."
-          )
-          next
-        end
-
-
 
         case user.registration_state
         when 'registered'
@@ -40,14 +26,26 @@ class TelegramBotService
           handle_registration user, message
         end
 
-
       end
     end
     end
 
   private
   def handle_main_flow(user, message)
-    @bot.api.send_message(chat_id: message.chat.id, text: "congrats!")
+    if user.create_expense_state == 'awaiting_amount'
+      amount = message.text.to_f.round(2)
+      Expense.create(user_id: user.id, amount: amount, time: Time.now)
+      user.update(create_expense_state: nil)
+      return
+    end
+
+    case message.text
+    when '/new'
+      user.update(create_expense_state: 'awaiting_amount')
+      @bot.api.send_message(chat_id: message.chat.id, text: "Please enter the amount")
+    else
+      @bot.api.send_message(chat_id: message.chat.id, text: "Use /new to log expense!")
+    end
   end
 
   def handle_registration(user, message)
