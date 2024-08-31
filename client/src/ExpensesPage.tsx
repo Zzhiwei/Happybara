@@ -1,6 +1,12 @@
 import useExpenseStore from "./hooks/useExpenseStore.ts";
 import {useEffect} from "react";
 
+interface Expense {
+    user_id: number;
+    amount: number;
+    time: string;
+}
+
 const ExpensesPage = () => {
     const { loadExpenses, expenses } = useExpenseStore();
 
@@ -11,7 +17,7 @@ const ExpensesPage = () => {
     return (
         <ul>
             {
-                expenses.map((expense) => (
+                expenses.map((expense: Expense) => (
                     <div key={expense.time} className='my-5 border-amber-200 border-2 border-solid '>
                         <div>
                             amount: {expense.amount}
