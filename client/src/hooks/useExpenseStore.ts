@@ -68,12 +68,9 @@ const useExpenseStore = () => {
         }
     };
 
-    useEffect(() => {
-        loadExpenses();
-    }, []);
-
     return {
         expenses,
+        setExpenses,
         loading,
         error,
         loadExpenses,

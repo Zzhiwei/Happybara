@@ -1,6 +1,4 @@
-// src/api/expenses.js
-
-const API_URL = 'http://localhost:3000/v1/expense';
+const API_URL = `${import.meta.env.VITE_API_URL}/v1/expenses`;
 
 export const fetchExpenses = async () => {
     const response = await fetch(API_URL);
