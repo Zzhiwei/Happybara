@@ -1,0 +1,32 @@
+#!/bin/bash
+
+image=happybara_base:v1
+config="--rm $DETACHED -it -v $(pwd):/rails -v happybara_tmp:/rails/tmp
+        -v happybara_gem_cache:/usr/local/bundle $image"
+
+########################
+#### SETUP COMMANDS ####
+########################
+if [ "$1" == "setup" ]
+then
+  docker run --name setup $config bundle install
+##############################
+#### DEVELOPMENT COMMANDS ####
+##############################
+elif [ "$1" == "console" ]
+then
+  echo Starting rails console
+  docker run --name happybara-console-$(date +'%m%dT%H%M%S') $config bundle exec rails c
+elif [ "$1" == "app" ]
+then
+  echo Starting happybara server
+  docker run --name happybara-server -p 3000:3000 $config sh -c \
+    "rm -f /rails/tmp/pids/server.pid && bundle exec rails s -p 3000 -b 0.0.0.0"
+elif [ "$1" == "migrate" ]
+then
+  echo Running database migration for baboon_dev
+  docker run --name happybara-db-migration $config bundle exec rails db:migrate
+else
+  echo Running custom command: "$@"
+  docker run --name "happybara-$1-$(date +'%m%dT%H%M%S')" $config "$@"
+fi
