@@ -41,11 +41,19 @@ class TelegramBotService
 
     case message.text
     when '/new'
-      user.update(create_expense_state: 'awaiting_amount')
-      @bot.api.send_message(chat_id: message.chat.id, text: "Please enter the amount")
-    else
-      @bot.api.send_message(chat_id: message.chat.id, text: "Use /new to log expense!")
-    end
+      expenseData = message.text[5..-1].split("-")  # remove /new from string?
+      if expenseData.length() != 2 or expenseData[1].class != INT
+        @bot.api.send_message(chat_id: message.chat.id, text: "Please use the format [item name]-[item amount].")
+      else
+        title = expenseData[0]
+        amount = expenseData[1].to_f.round(2)
+        expense = Expense.create(user_id: user.id, title: title, amount: amount, time: Time.now)
+        if expense.persisted?
+          @bot.api.send_message(chat_id: message.chat.id, text: "Successfully added new expense!")
+        else
+          @bot.api.send_message(chat_id: message.chat.id, text: "Oops, please try again.")
+        end
+      end
   end
 
   def handle_registration(user, message)
