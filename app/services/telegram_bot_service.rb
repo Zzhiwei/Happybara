@@ -21,7 +21,10 @@ class TelegramBotService
 
         case user.registration_state
         when 'registered'
-          handle_main_flow user, message
+          if message.is_a?(Telegram::Bot::Types::Message)
+            handle_message_flow user, message
+          elsif message.is_a?(Telegram::Bot::Types::MessageEdited)
+            handle_edited_flow user, message
         else
           handle_registration user, message
         end
@@ -31,30 +34,37 @@ class TelegramBotService
     end
 
   private
-  def handle_main_flow(user, message)
-    if user.create_expense_state == 'awaiting_amount'
-      amount = message.text.to_f.round(2)
-      Expense.create(user_id: user.id, amount: amount, time: Time.now)
-      user.update(create_expense_state: nil)
-      return
-    end
+  def handle_message_flow(user, message)
+    command, content = message.text.split(" ", 2)
 
-    case message.text
+    case command
     when '/new'
-      expenseData = message.text[5..-1].split("-")  # remove /new from string?
+      expenseData = content.text.split("-")  # remove /new from string?
       if expenseData.length() != 2 or expenseData[1].class != INT
         @bot.api.send_message(chat_id: message.chat.id, text: "Please use the format [item name]-[item amount].")
       else
         title = expenseData[0]
         amount = expenseData[1].to_f.round(2)
-        expense = Expense.create(user_id: user.id, title: title, amount: amount, time: Time.now)
+        expense = Expense.create(user_id: user.id, message_id: message.message_id, title: title, amount: amount, time: Time.now)
         if expense.persisted?
           @bot.api.send_message(chat_id: message.chat.id, text: "Successfully added new expense!")
         else
           @bot.api.send_message(chat_id: message.chat.id, text: "Oops, please try again.")
         end
       end
+    when '/list'
+      expensesArray = Expense.where("user_id LIKE ?", "%#{user.id}%")
+      responseString = "Here is your list of expenses!\n\n"
+      responseString.each_with_index do |expense, i|
+        responseString << "Expense #{i}: #{expense.title} - $#{expense.amount}\n"
+      end
+      @bot.api.send_message(chat_id: message.chat.id, text: responseString)
+    when '/delete'
+      # To be handled. Delete last added transaction?
   end
+
+  private def handle_edited_flow(user, message)
+    # Get expense with message id and update amount
 
   def handle_registration(user, message)
     case user.registration_state
