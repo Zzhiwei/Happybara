@@ -5,6 +5,8 @@ class TelegramBotService
     Telegram::Bot::Client.run(token) do |bot|
       @bot = bot
       bot.listen do |message|
+        puts "received message #{message}"
+
         user = User.find_by_id(message.from.id)
 
         if !user
@@ -20,15 +22,15 @@ class TelegramBotService
         end
 
         case user.registration_state
-        when "awaiting_email", "awaiting_password"  # incomplete registration
-          handle_registration user, message
         when "registered"
           if message.is_a?(Telegram::Bot::Types::Message)
-            handle_message_flow user, message
-          elsif message.is_a?(Telegram::Bot::Types::MessageEdited)
-            handle_edited_flow user, message
+            if message.edit_date
+              handle_edited_flow user, message
+            else
+              handle_message_flow user, message
+            end
           else
-          handle_registration user, message
+            handle_registration user, message
           end
         end
       end
@@ -37,14 +39,18 @@ class TelegramBotService
 
   private
   def handle_message_flow(user, message)
-    puts "handling message: #{message}"
     command, content = message.text.split(" ", 2)
 
     case command
     when "/start"
       @bot.api.send_message(chat_id: message.chat.id, text: "To create a new transaction, type /new [item name]-[item amount]!")
     when "/new"
-      expenseData = content.split("-")  # remove /new from string?
+      begin
+        expenseData = content.split("-")  # remove /new from string?
+      rescue
+        @bot.api.send_message(chat_id: message.chat.id, text: "To create a new transaction, type /new [item name]-[item amount]!")
+        return
+      end
       if expenseData.length() != 2 or expenseData[1].class.is_a?(Integer)
         @bot.api.send_message(chat_id: message.chat.id, text: "Please use the format [item name]-[item amount].")
       else
@@ -74,6 +80,30 @@ class TelegramBotService
 
   private def handle_edited_flow(user, message)
     # Get expense with message id and update amount
+    command, content = message.text.split(" ", 2)
+
+    case command
+    when "/new"  # for now, only handle editing added transactions
+      begin
+        expenseData = content.split("-")  # remove /new from string?
+      rescue
+        @bot.api.send_message(chat_id: message.chat.id, text: "To create a new transaction, type /new [item name]-[item amount]!")
+        return
+      end
+      if expenseData.length() != 2 or expenseData[1].class.is_a?(Integer)
+        @bot.api.send_message(chat_id: message.chat.id, text: "Please use the format [item name]-[item amount].")
+      else
+        title = expenseData[0]
+        amount = expenseData[1].to_f.round(2)
+        oldExpense = Expense.find_by(user_id: user.id, message_id: message.message_id)
+        newExpense = oldExpense.update(title: title, amount: amount)
+        if newExpense
+          @bot.api.send_message(chat_id: message.chat.id, text: "Successfully edited new expense!")
+        else
+          @bot.api.send_message(chat_id: message.chat.id, text: "Oops, please try again.")
+        end
+      end
+    end
   end
 
   def handle_registration(user, message)
