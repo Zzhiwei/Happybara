@@ -8,8 +8,8 @@ class TelegramBotService
         user = User.find_by_id(message.from.id)
 
         if !user
-          if message.text == '/register'
-            User.create(id: message.from.id, registration_state: 'awaiting_email')
+          if message.text == "/register"
+            User.create(id: message.from.id, registration_state: "awaiting_email")
             bot.api.send_message(chat_id: message.chat.id, text: "Please enter your email")
           else
             bot.api.send_message(
@@ -20,27 +20,32 @@ class TelegramBotService
         end
 
         case user.registration_state
-        when 'registered'
+        when "awaiting_email", "awaiting_password"  # incomplete registration
+          handle_registration user, message
+        when "registered"
           if message.is_a?(Telegram::Bot::Types::Message)
             handle_message_flow user, message
           elsif message.is_a?(Telegram::Bot::Types::MessageEdited)
             handle_edited_flow user, message
-        else
+          else
           handle_registration user, message
+          end
         end
-
       end
     end
-    end
+  end
 
   private
   def handle_message_flow(user, message)
+    puts "handling message: #{message}"
     command, content = message.text.split(" ", 2)
 
     case command
-    when '/new'
-      expenseData = content.text.split("-")  # remove /new from string?
-      if expenseData.length() != 2 or expenseData[1].class != INT
+    when "/start"
+      @bot.api.send_message(chat_id: message.chat.id, text: "To create a new transaction, type /new [item name]-[item amount]!")
+    when "/new"
+      expenseData = content.split("-")  # remove /new from string?
+      if expenseData.length() != 2 or expenseData[1].class.is_a?(Integer)
         @bot.api.send_message(chat_id: message.chat.id, text: "Please use the format [item name]-[item amount].")
       else
         title = expenseData[0]
@@ -52,33 +57,38 @@ class TelegramBotService
           @bot.api.send_message(chat_id: message.chat.id, text: "Oops, please try again.")
         end
       end
-    when '/list'
+    when "/list"
       expensesArray = Expense.where("user_id LIKE ?", "%#{user.id}%")
       responseString = "Here is your list of expenses!\n\n"
-      responseString.each_with_index do |expense, i|
+      totalAmount = 0
+      expensesArray.each_with_index do |expense, i|
         responseString << "Expense #{i}: #{expense.title} - $#{expense.amount}\n"
+        totalAmount += expense.amount
       end
+      responseString << "\nTotal amount spent: $#{totalAmount}"
       @bot.api.send_message(chat_id: message.chat.id, text: responseString)
-    when '/delete'
+    when "/delete"
       # To be handled. Delete last added transaction?
+    end
   end
 
   private def handle_edited_flow(user, message)
     # Get expense with message id and update amount
+  end
 
   def handle_registration(user, message)
+    puts "handling registration"
     case user.registration_state
-    when 'awaiting_email'
-      user.update(email: message.text, registration_state: 'awaiting_password')
+    when "awaiting_email"
+      user.update(email: message.text, registration_state: "awaiting_password")
       @bot.api.send_message(chat_id: message.chat.id, text: "Please enter your password")
-    when 'awaiting_password'
-      user.update(password_hash: message.text, registration_state: 'registered')
+    when "awaiting_password"
+      user.update(password_hash: message.text, registration_state: "registered")
       @bot.api.send_message(chat_id: message.chat.id, text: "Registration complete!")
     else
       @bot.api.send_message(chat_id: message.chat.id, text: "Unregistered. Please use /register to sign up.")
     end
   end
-
 end
 
 Signal.trap("TERM") do
@@ -92,4 +102,3 @@ Signal.trap("INT") do
   Rails.application.config.telegram_bot.stop
   exit
 end
-
