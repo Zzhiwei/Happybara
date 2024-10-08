@@ -1,11 +1,19 @@
 class TelegramBotService
   def run
+    Rails.logger.info <<~MESSAGE
+
+    ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+    ┃                                               ┃
+    ┃          🚀 Telegram Bot Started! 🚀          ┃
+    ┃                                               ┃
+    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+    MESSAGE
     token = Rails.application.credentials.dig(:telegram_bot_key)
 
     Telegram::Bot::Client.run(token) do |bot|
       @bot = bot
       bot.listen do |message|
-        puts "received message #{message}"
+        puts " 📩 Message Received: #{message}"
 
         user = User.find_by_id(message.from.id)
 
