@@ -72,17 +72,28 @@ class TelegramBotService
         end
       end
     when "/list"
-      expensesArray = Expense.where("user_id LIKE ?", "%#{user.id}%")
+      maxListed = 10
+      expensesArray = Expense.where("user_id LIKE ?", "%#{user.id}%").order(id: :desc)
       responseString = "Here is your list of expenses!\n\n"
       totalAmount = 0
       expensesArray.each_with_index do |expense, i|
-        responseString << "Expense #{i}: #{expense.title} - $#{expense.amount}\n"
+        if i < maxListed
+          responseString << "#{i+1}: #{expense.title} - $#{expense.amount}\n"
+        end
         totalAmount += expense.amount
+      end
+      if expensesArray.length > maxListed
+        responseString << "...\n"
       end
       responseString << "\nTotal amount spent: $#{totalAmount}"
       @bot.api.send_message(chat_id: message.chat.id, text: responseString)
     when "/delete"
       # To be handled. Delete last added transaction?
+      lastExpense = Expense.where("user_id LIKE ?", "%#{user.id}%").order(id: :desc).first
+      if lastExpense
+        lastExpense.destroy
+        @bot.api.send_message(chat_id: message.chat.id, text: "Last expense deleted: #{lastExpense.title}, $#{lastExpense.amount}")
+      end
     end
   end
 
@@ -104,6 +115,10 @@ class TelegramBotService
         title = expenseData[0]
         amount = expenseData[1].to_f.round(2)
         oldExpense = Expense.find_by(user_id: user.id, message_id: message.message_id)
+        if oldExpense.nil?
+          @bot.api.send_message(chat_id: message.chat.id, text: "Oops, can't find this expense. Are you sure it exists?")
+          return
+        end
         newExpense = oldExpense.update(title: title, amount: amount)
         if newExpense
           @bot.api.send_message(chat_id: message.chat.id, text: "Successfully edited new expense!")
@@ -115,7 +130,6 @@ class TelegramBotService
   end
 
   def handle_registration(user, message)
-    puts "handling registration"
     case user.registration_state
     when "awaiting_email"
       user.update(email: message.text, registration_state: "awaiting_password")
