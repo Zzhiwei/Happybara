@@ -32,7 +32,7 @@ def remind_every_hour
   scheduler = Rufus::Scheduler.new
 
   scheduler.cron "0 * * * *" do
-    users = get_user_for_hour()
+    users = TelegramRemindersService.get_users_for_current_hour()
     users.each do |user|
       userId = user.id
       Telegram::Bot::Client.run(TOKEN) do |bot|
@@ -40,9 +40,4 @@ def remind_every_hour
       end
     end
   end
-end
-
-private def get_user_for_hour
-  current_hour = Time.now.hour
-  Reminder.where(hour: current_hour).pluck(:user)
 end
