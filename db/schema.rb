@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_09_29_142049) do
+ActiveRecord::Schema[7.2].define(version: 2024_11_11_140034) do
   create_table "expenses", force: :cascade do |t|
     t.decimal "amount"
     t.datetime "time"
@@ -19,6 +19,14 @@ ActiveRecord::Schema[7.2].define(version: 2024_09_29_142049) do
     t.datetime "updated_at", null: false
     t.string "title"
     t.string "message_id"
+  end
+
+  create_table "reminders", force: :cascade do |t|
+    t.string "user"
+    t.integer "hour"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.check_constraint "hour >= 0 AND hour <= 23", name: "check_hour_range"
   end
 
   create_table "users", force: :cascade do |t|
