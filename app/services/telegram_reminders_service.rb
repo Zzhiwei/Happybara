@@ -3,7 +3,7 @@
 class TelegramRemindersService
   def self.create_reminder(user_id: string, hour: int)
     reminder = Reminder.create(user: user_id, hour: hour)
-    if reminder.presisted?
+    if reminder.persisted?
       { success: reminder }
     else
       { error: reminder.errors.full_messages }
@@ -20,7 +20,7 @@ class TelegramRemindersService
     end
   end
 
-  def self.get_users_for_current_hour
+  def self.get_user_ids_for_current_hour
     current_hour = Time.now.hour
     Reminder.where(hour: current_hour).pluck(:user)
   end

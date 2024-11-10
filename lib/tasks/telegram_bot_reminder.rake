@@ -1,5 +1,5 @@
 require "telegram/bot"
-require "rufus-scheduler"
+require "rufus/scheduler"
 
 TOKEN = Rails.application.credentials.dig(:telegram_bot_key)
 
@@ -31,13 +31,18 @@ end
 def remind_every_hour
   scheduler = Rufus::Scheduler.new
 
-  scheduler.cron "0 * * * *" do
-    users = TelegramRemindersService.get_users_for_current_hour()
-    users.each do |user|
-      userId = user.id
-      Telegram::Bot::Client.run(TOKEN) do |bot|
-        bot.api.send_message(chat_id: userId, text: "Add your expenses for today!")
+  # scheduler.cron "0 * * * *" do
+  scheduler.every "10s" do
+    puts "TELEGRAM_BOT_REMINDER: executing reminders service --->"
+    Telegram::Bot::Client.run(TOKEN) do |bot|
+      user_ids = TelegramRemindersService.get_user_ids_for_current_hour()
+      puts "TELEGRAM_BOT_REMINDER: No of users = #{user_ids.count}"
+      user_ids.each do |id|
+        puts "    Sending reminder to #{id}"
+        bot.api.send_message(chat_id: id, text: "Add your expenses for today!")
       end
     end
   end
+
+  scheduler.join
 end

@@ -1,4 +1,4 @@
-require 'telegram/bot'
+require "telegram/bot"
 
 namespace :telegram_bot do
   desc "Start the Telegram bot"
