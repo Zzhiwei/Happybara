@@ -94,6 +94,18 @@ class TelegramBotService
         lastExpense.destroy
         @bot.api.send_message(chat_id: message.chat.id, text: "Last expense deleted: #{lastExpense.title}, $#{lastExpense.amount}")
       end
+    when "/remind"
+      begin
+        result = TelegramRemindersService.create_reminder(user_id: user.id, hour: Integer(content))
+        puts result
+        if result.key?(:success)
+          puts "Successfully created a reminder"
+        else
+          puts "Create reminder failed"
+        end
+      rescue ArgumentError => e
+        puts "Error at create_reminder: #{e.message}"
+      end
     end
   end
 
