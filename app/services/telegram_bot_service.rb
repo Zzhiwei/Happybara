@@ -88,7 +88,6 @@ class TelegramBotService
       responseString << "\nTotal amount spent: $#{totalAmount}"
       @bot.api.send_message(chat_id: message.chat.id, text: responseString)
     when "/delete"
-      # To be handled. Delete last added transaction?
       lastExpense = Expense.where("user_id LIKE ?", "%#{user.id}%").order(id: :desc).first
       if lastExpense
         lastExpense.destroy
@@ -96,16 +95,47 @@ class TelegramBotService
       end
     when "/remind"
       begin
-        result = TelegramRemindersService.create_reminder(user_id: user.id, hour: Integer(content))
-        puts result
-        if result.key?(:success)
-          puts "Successfully created a reminder"
-        else
-          puts "Create reminder failed"
-        end
+        handle_reminder_commands(user.id, message.chat.id, content)
       rescue ArgumentError => e
         puts "Error at create_reminder: #{e.message}"
+        puts "Error at handle_reminder_commands: #{e.message}"
       end
+    end
+  end
+
+  private def handle_reminder_commands(user_id, chat_id, content)
+    if content.contains("create")
+      _, hour = content.split(" ", 2)
+      result = TelegramRemindersService.create_reminder(user_id: user.id, hour: Integer(hour))
+      if result.key?(:success)
+        @bot.api.send_message(chat_id: chat_id, text: "New reminder created for #{hour}!")
+      else
+        @bot.api.send_message(chat_id: chat_id, text: "Sorry, please try again. #{result.error}")
+      end
+    elsif content.contains("delete")
+      _, hour = content.split(" ", 2)
+      TelegramRemindersService.delete_reminder(user_id: user.id, hour: hour)
+      if result.key?(:success)
+        @bot.api.send_message(chat_id: chat_id, text: "Reminder deleted for #{hour}!")
+      else
+        @bot.api.send_message(chat_id: chat_id, text: "Sorry, please try again. #{result.error}")
+      end
+    elsif content.contains ("list")
+      maxListed = 10
+      remindersArray = TelegramRemindersService.get_reminders_for_user_id(user_id)
+      responseString = "Here is your list of reminders!\n\n"
+      remindersArray.each_with_index do |expense, i|
+        if i < maxListed
+          responseString << "#{i+1}: #{reminder.hour}\n"
+        end
+      end
+      if remindersArray.length > maxListed
+        responseString << "...\n"
+      end
+      @bot.api.send_message(chat_id: chat_id, text: responseString)
+    else
+      responseString = "Sorry, I couldn't understand that. Please use either 'create n', 'delete n' or 'list'."
+      @bot.api.send_message(chat_id: chat_id, text: responseString)
     end
   end
 

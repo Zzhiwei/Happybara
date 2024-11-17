@@ -24,4 +24,8 @@ class TelegramRemindersService
     current_hour = Time.now.hour
     Reminder.where(hour: current_hour).pluck(:user)
   end
+
+  def self.get_reminders_for_user_id(user_id: string)
+    Reminder.where(user_id: user_id).pluck(:hour)
+  end
 end
