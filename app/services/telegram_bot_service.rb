@@ -17,29 +17,26 @@ class TelegramBotService
 
         user = User.find_by_id(message.from.id)
 
-        if !user
-          if message.text == "/register"
-            User.create(id: message.from.id, registration_state: "awaiting_email")
-            bot.api.send_message(chat_id: message.chat.id, text: "Please enter your email")
-          else
-            bot.api.send_message(
-              chat_id: message.chat.id, text: "Unregistered. Please use /register to sign up."
-            )
-          end
-          next
-        end
+        begin
 
-        case user.registration_state
-        when "registered"
-          if message.is_a?(Telegram::Bot::Types::Message)
-            if message.edit_date
-              handle_edited_flow user, message
-            else
-              handle_message_flow user, message
-            end
+          if !user
+            user = User.create(id: message.from.id, registration_state: RegistrationState::AWAITING_EMAIL)
+            @bot.api.send_message(chat_id: message.from.id, text: "Please enter your email.")
           else
-            handle_registration user, message
+            case user.registration_state
+            when RegistrationState::REGISTERED
+              if message.edit_date
+                handle_edited_flow user, message
+              else
+                handle_message_flow user, message
+              end
+            else
+              handle_registration user, message
+            end
           end
+
+        rescue Exception => e
+          puts "🚨 PLEASE FIX! 🚨 Something was wrong: #{e.message}"
         end
       end
     end
@@ -51,7 +48,7 @@ class TelegramBotService
 
     case command
     when "/start"
-      @bot.api.send_message(chat_id: message.chat.id, text: "To create a new transaction, type /new [item name]-[item amount]!")
+      @bot.api.send_message(chat_id: message.chat.id, text: "/new [item name]-[item amount]\n/list\n/delete\n/remind [remind command]")
     when "/new"
       begin
         expenseData = content.split("-")  # remove /new from string?
@@ -94,12 +91,11 @@ class TelegramBotService
         @bot.api.send_message(chat_id: message.chat.id, text: "Last expense deleted: #{lastExpense.title}, $#{lastExpense.amount}")
       end
     when "/remind"
-      begin
+      if !content.nil?
         handle_reminder_commands(user.id, message.chat.id, content)
-      rescue ArgumentError => e
-        puts "Error at create_reminder: #{e.message}"
-        puts "Error at handle_reminder_commands: #{e.message}"
       end
+    else
+      handle_unknown_command(message.chat.id)
     end
   end
 
@@ -132,9 +128,6 @@ class TelegramBotService
       if remindersArray.length > maxListed
         responseString << "...\n"
       end
-      @bot.api.send_message(chat_id: chat_id, text: responseString)
-    else
-      responseString = "Sorry, I couldn't understand that. Please use either 'create n', 'delete n' or 'list'."
       @bot.api.send_message(chat_id: chat_id, text: responseString)
     end
   end
@@ -173,15 +166,25 @@ class TelegramBotService
 
   def handle_registration(user, message)
     case user.registration_state
-    when "awaiting_email"
-      user.update(email: message.text, registration_state: "awaiting_password")
+    when RegistrationState::AWAITING_EMAIL
+      user.update(email: message.text, registration_state: RegistrationState::AWAITING_PASSWORD)
       @bot.api.send_message(chat_id: message.chat.id, text: "Please enter your password")
-    when "awaiting_password"
-      user.update(password_hash: message.text, registration_state: "registered")
+    when RegistrationState::AWAITING_PASSWORD
+      user.update(password_hash: message.text, registration_state: RegistrationState::REGISTERED)
       @bot.api.send_message(chat_id: message.chat.id, text: "Registration complete!")
     else
-      @bot.api.send_message(chat_id: message.chat.id, text: "Unregistered. Please use /register to sign up.")
+      @bot.api.send_message(chat_id: message.chat.id, text: "Hi! Please create an account by entering your email.")
     end
+  end
+
+  def handle_unknown_command(chat_id)
+    @bot.api.send_message(chat_id: chat_id, text: "Sorry I didn't get that. Make sure you're using one of the pre-defined commands, or type /start to see the list of commands.")
+  end
+
+  module RegistrationState
+    AWAITING_EMAIL = "awaiting_email"
+    AWAITING_PASSWORD = "awaiting_password"
+    REGISTERED = "registered"
   end
 end
 
