@@ -2,6 +2,7 @@
 
 class TelegramRemindersService
   def self.create_reminder(user_id: string, hour: int)
+    puts "Create_reminder"
     reminder = Reminder.create(user: user_id, hour: hour)
     if reminder.persisted?
       { success: reminder }
@@ -25,7 +26,7 @@ class TelegramRemindersService
     Reminder.where(hour: current_hour).pluck(:user)
   end
 
-  def self.get_reminders_for_user_id(user_id: string)
-    Reminder.where(user_id: user_id).pluck(:hour)
+  def self.get_reminders_for_user_id(user_id)
+    Reminder.where(user: user_id).pluck(:hour)
   end
 end

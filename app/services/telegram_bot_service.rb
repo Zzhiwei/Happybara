@@ -36,7 +36,7 @@ class TelegramBotService
           end
 
         rescue Exception => e
-          puts "🚨 PLEASE FIX! 🚨 Something was wrong: #{e.message}"
+          puts "🚨 PLEASE FIX! 🚨 Something was wrong: #{e.inspect}\n#{e.backtrace_locations.first()}"
         end
       end
     end
@@ -91,44 +91,47 @@ class TelegramBotService
         @bot.api.send_message(chat_id: message.chat.id, text: "Last expense deleted: #{lastExpense.title}, $#{lastExpense.amount}")
       end
     when "/remind"
-      if !content.nil?
         handle_reminder_commands(user.id, message.chat.id, content)
-      end
     else
       handle_unknown_command(message.chat.id)
     end
   end
 
   private def handle_reminder_commands(user_id, chat_id, content)
-    if content.contains("create")
+    if content.nil?
+      @bot.api.send_message(chat_id: chat_id, text: "The /remind commands are:\ncreate [hour]\ndelete [hour]\nlist")
+    elsif content.include? ("create")
       _, hour = content.split(" ", 2)
-      result = TelegramRemindersService.create_reminder(user_id: user.id, hour: Integer(hour))
+      result = TelegramRemindersService.create_reminder(user_id: user_id, hour: Integer(hour))
       if result.key?(:success)
         @bot.api.send_message(chat_id: chat_id, text: "New reminder created for #{hour}!")
       else
         @bot.api.send_message(chat_id: chat_id, text: "Sorry, please try again. #{result.error}")
       end
-    elsif content.contains("delete")
+    elsif content.include? ("delete")
       _, hour = content.split(" ", 2)
-      TelegramRemindersService.delete_reminder(user_id: user.id, hour: hour)
+      result = TelegramRemindersService.delete_reminder(user_id: user_id, hour: hour)
       if result.key?(:success)
         @bot.api.send_message(chat_id: chat_id, text: "Reminder deleted for #{hour}!")
       else
         @bot.api.send_message(chat_id: chat_id, text: "Sorry, please try again. #{result.error}")
       end
-    elsif content.contains ("list")
+    elsif content.include? ("list")
+      puts "remind list"
       maxListed = 10
       remindersArray = TelegramRemindersService.get_reminders_for_user_id(user_id)
       responseString = "Here is your list of reminders!\n\n"
-      remindersArray.each_with_index do |expense, i|
+      remindersArray.each_with_index do |reminder, i|
         if i < maxListed
-          responseString << "#{i+1}: #{reminder.hour}\n"
+          responseString << "#{i+1}: #{reminder}\n"
         end
       end
       if remindersArray.length > maxListed
         responseString << "...\n"
       end
       @bot.api.send_message(chat_id: chat_id, text: responseString)
+    else
+      @bot.api.send_message(chat_id: chat_id, text: "The /remind commands are:\ncreate [hour]\ndelete [hour]\nlist")
     end
   end
 
