@@ -30,10 +30,6 @@ elif [ "$1" == "bot" ]
 then
   echo Starting Telegram bot
   docker run --name happybara_telegram_bot $config bundle exec rake telegram_bot:bot
-elif [ "$1" == "reminders" ]
-then
-  echo Starting daily reminders for Telegram bot
-  docker run --name happybara_daily_reminders $config bundle exec rake daily_reminders:remind
 else
   echo Running custom command: "$@"
   docker run --name "happybara-$1-$(date +'%m%dT%H%M%S')" $config "$@"

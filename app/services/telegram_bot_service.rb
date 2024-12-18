@@ -18,7 +18,6 @@ class TelegramBotService
         user = User.find_by_id(message.from.id)
 
         begin
-
           if !user
             user = User.create(id: message.from.id, registration_state: RegistrationState::AWAITING_EMAIL)
             @bot.api.send_message(chat_id: message.from.id, text: "Please enter your email.")
@@ -34,7 +33,6 @@ class TelegramBotService
               handle_registration user, message
             end
           end
-
         rescue Exception => e
           puts "🚨 PLEASE FIX! 🚨 Something was wrong: #{e.inspect}\n#{e.backtrace_locations.first()}"
         end
