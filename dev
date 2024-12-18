@@ -1,6 +1,6 @@
 #!/bin/bash
 
-image=happybara_base:v1
+image=happybara:v1
 config="--rm $DETACHED -it -v $(pwd):/rails -v happybara_tmp:/rails/tmp
         -v happybara_gem_cache:/usr/local/bundle $image"
 
@@ -24,8 +24,12 @@ then
     "rm -f /rails/tmp/pids/server.pid && bundle exec rails s -p 3000 -b 0.0.0.0"
 elif [ "$1" == "migrate" ]
 then
-  echo Running database migration for baboon_dev
+  echo Running database migration for happybara
   docker run --name happybara-db-migration $config bundle exec rails db:migrate
+elif [ "$1" == "bot" ]
+then
+  echo Starting Telegram bot
+  docker run --name happybara_telegram_bot $config bundle exec rake telegram_bot:bot
 else
   echo Running custom command: "$@"
   docker run --name "happybara-$1-$(date +'%m%dT%H%M%S')" $config "$@"
