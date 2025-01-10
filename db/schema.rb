@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_11_11_140034) do
+ActiveRecord::Schema[8.0].define(version: 2025_01_10_091300) do
   create_table "expenses", force: :cascade do |t|
     t.decimal "amount"
     t.datetime "time"
@@ -29,6 +29,14 @@ ActiveRecord::Schema[7.2].define(version: 2024_11_11_140034) do
     t.check_constraint "hour >= 0 AND hour <= 23", name: "check_hour_range"
   end
 
+  create_table "tags", force: :cascade do |t|
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["user_id"], name: "index_tags_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email"
     t.string "password_hash"
@@ -37,4 +45,6 @@ ActiveRecord::Schema[7.2].define(version: 2024_11_11_140034) do
     t.string "registration_state"
     t.string "create_expense_state"
   end
+
+  add_foreign_key "tags", "users"
 end
