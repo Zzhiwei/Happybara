@@ -50,9 +50,13 @@ class TelegramBotService
       @bot.api.send_message(chat_id: message.chat.id, text: "/new [item name]-[item amount]\n/list\n/delete\n/remind [remind command]\n/tag [tag command]")
     when "/new"
       begin
-        expenseData = content.split("-")  # remove /new from string?
-      rescue
-        @bot.api.send_message(chat_id: message.chat.id, text: "To create a new transaction, type /new [item name]-[item amount]!")
+        # format: item name -[Amount] #tags,separated,by,commas
+        expenseData, tagNames = content.split("#", 2)  # remove /new from string?
+        expenseData = expenseData.strip.split("-")
+        tagNames = tagNames.split(",")
+      rescue Exception => e
+        puts "#{e.inspect}\n#{e.backtrace_locations.first()}"
+        @bot.api.send_message(chat_id: message.chat.id, text: "To create a new transaction, type /new [item name]-[item amount] #tags,separated,by,commas!")
         return
       end
       if expenseData.length() != 2 or expenseData[1].class.is_a?(Integer)
@@ -62,6 +66,13 @@ class TelegramBotService
         amount = expenseData[1].to_f.round(2)
         expense = Expense.create(user_id: user.id, message_id: message.message_id, title: title, amount: amount, time: Time.now)
         if expense.persisted?
+          # definitely refactor this; add tags to expense
+          tagNames.each do |name|
+            name = name.strip
+            if user.tags.exists?(name: name)
+              expense.tags << user.tags.where(name: name)
+            end
+          end
           @bot.api.send_message(chat_id: message.chat.id, text: "Successfully added new expense!")
         else
           @bot.api.send_message(chat_id: message.chat.id, text: "Oops, please try again.")
@@ -74,7 +85,11 @@ class TelegramBotService
       totalAmount = 0
       expensesArray.each_with_index do |expense, i|
         if i < maxListed
-          responseString << "#{i+1}: #{expense.title} - $#{expense.amount}\n"
+          expenseString = "#{i+1}: #{expense.title} - $#{expense.amount}"
+          expense.tags.each do |tag|
+            expenseString << " ##{tag.name}"
+          end
+          responseString << expenseString + "\n"
         end
         totalAmount += expense.amount
       end
@@ -139,10 +154,10 @@ class TelegramBotService
   private def handle_tag_commands(user, chat_id, content)
     user_id = user.id
     if content.nil?
-      @bot.api.send_message(chat_id: chat_id, text: "The /tag commands are:\ncreate [name]\ndelete [name]\nlist\nrename [old name]->[new name`]")
+      @bot.api.send_message(chat_id: chat_id, text: "The /tag commands are:\ncreate [name]\ndelete [name]\nlist\nrename [old name]->[new name]\n\nIt is recommended to create tags without spaces for clarity.")
     elsif content.include? ("create")
       _, name = content.split(" ", 2)
-      tag = user.tags.create(name: name)
+      tag = user.tags.create(name: name.strip)
       if tag.persisted?
         @bot.api.send_message(chat_id: chat_id, text: "New tag #{name} created!")
       else
@@ -163,7 +178,6 @@ class TelegramBotService
       @bot.api.send_message(chat_id: chat_id, text: "Your tags are: #{tags}")
     elsif content.include?("rename") && content.include?("->")
       old, newName = content.split(" ", 2)[1].split("->", 2)
-      # tag = Tag.where(user: user_id, name: name)  # is this right?
       tagFromUser = user.tags.where(name: old)
       updatedTag = tagFromUser.update(name: newName)
       puts "Tag is #{tag}, tagFromUser is #{tagFromUser}, Updated tag is #{updatedTag}"

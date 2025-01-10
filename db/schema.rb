@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_10_091300) do
+ActiveRecord::Schema[8.0].define(version: 2025_01_10_102235) do
   create_table "expenses", force: :cascade do |t|
     t.decimal "amount"
     t.datetime "time"
@@ -19,6 +19,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_10_091300) do
     t.datetime "updated_at", null: false
     t.string "title"
     t.string "message_id"
+  end
+
+  create_table "expenses_tags", id: false, force: :cascade do |t|
+    t.integer "expense_id", null: false
+    t.integer "tag_id", null: false
   end
 
   create_table "reminders", force: :cascade do |t|
