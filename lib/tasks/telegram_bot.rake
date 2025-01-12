@@ -15,7 +15,7 @@ namespace :telegram_bot do
 
     loop do
       begin
-        TelegramBotService.new.run
+        TelegramBot::TelegramBotService.new.run
       rescue StandardError => e
         Rails.logger.error "An error occurred: #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
