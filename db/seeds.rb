@@ -9,6 +9,8 @@
 #   end
 Expense.destroy_all
 User.destroy_all
+Tag.destroy_all
+Reminder.destroy_all
 
 4.times do
   User.create(
